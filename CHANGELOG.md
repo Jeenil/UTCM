@@ -5,14 +5,6 @@ All notable changes to the UTCM module will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Fixed
-- **Connect-UTCM**: `-Scopes` parameter changed from `[string]` (space-delimited) to `[string[]]` (array). Short scope names such as `Application.ReadWrite.All` are automatically expanded to their full Graph URI (`https://graph.microsoft.com/Application.ReadWrite.All`); OIDC primitives (`openid`, `profile`, `offline_access`, `email`) and already-qualified URIs pass through unchanged.
-- **Connect-UTCM**: `DefaultScopes` updated to an array to match the new parameter type.
-- **README**: Added "First-time tenant setup" section documenting the elevated scopes required by `Install-UTCMServicePrincipal`, `Grant-UTCMPermission`, and `Grant-UTCMDirectoryRole`. Clarified that being a Global Admin is not sufficient without the correct OAuth scopes in the token.
-- **README**: Fixed incorrect permission names (`TenantConfiguration.*` → `ConfigurationMonitoring.*`).
-
 ## [0.1.1] - 2026-02-18
 
 ### Fixed
@@ -42,6 +34,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Formatting**: Custom `.ps1xml` formatting with color-coded table views for monitors, snapshots, drifts, and comparison results
 - **Testing**: 111 Pester tests covering all 19 public functions and 5 private helpers
 
-[Unreleased]: https://github.com/JankeSkanke/UTCM/compare/v0.1.1...HEAD
 [0.1.1]: https://github.com/JankeSkanke/UTCM/releases/tag/v0.1.1
 [0.1.0]: https://github.com/JankeSkanke/UTCM/releases/tag/v0.1.0
