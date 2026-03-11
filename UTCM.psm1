@@ -27,8 +27,12 @@ $script:TokenEndpoint  = $null
 $script:ClientId       = $null
 $script:Context        = $null
 
-# Default delegated scopes needed for UTCM operations + openid for identity claims
-$script:DefaultScopes  = 'openid profile offline_access https://graph.microsoft.com/ConfigurationMonitoring.ReadWrite.All'
+# Default delegated scopes for normal UTCM operations.
+# Setup commands need additional scopes — pass them via Connect-UTCM -Scopes:
+#   Install-UTCMServicePrincipal  → Application.ReadWrite.All
+#   Grant-UTCMPermission          → Application.ReadWrite.All, AppRoleAssignment.ReadWrite.All
+#   Grant-UTCMDirectoryRole       → RoleManagement.ReadWrite.Directory
+$script:DefaultScopes  = @('openid', 'profile', 'offline_access', 'ConfigurationMonitoring.ReadWrite.All')
 
 # ---------------------------------------------------------------------------
 # Dot-source Private (internal) functions, then Public (exported) functions
