@@ -5,15 +5,15 @@
 
 A lightweight PowerShell module for working with **Microsoft Graph Unified Tenant Configuration Management (UTCM)** Beta APIs. Built with native `Invoke-RestMethod` — no SDK dependencies required.
 
-## � Requirements
+## Requirements
 
 - **PowerShell 7.0+** (cross-platform support)
-- **UTCM Service Principal** — The UTCM first-party service principal must be installed in your tenant before use.  
-  Use the built-in helper: `Install-UTCMServicePrincipal -TenantId "yourtenant.onmicrosoft.com"`  
-  Or follow the manual steps in the [Microsoft Learn setup guide](https://learn.microsoft.com/en-us/graph/utcm-authentication-setup#set-up-the-utcm-service-principal).
-- **Microsoft Graph Permissions**:
-  - `TenantConfiguration.Read.All` — minimum for read operations
-  - `TenantConfiguration.ReadWrite.All` — for monitor creation and management
+- **UTCM Service Principal** — The UTCM first-party service principal (`03b07b79-c5bc-4b5e-9bfa-13acf4a99998`) must exist in your tenant before monitors can run. See [First-time tenant setup](#first-time-tenant-setup) below.
+- **Microsoft Graph Permissions** for the connecting user/app:
+  - `ConfigurationMonitoring.Read.All` — read monitors, drifts, results, snapshots
+  - `ConfigurationMonitoring.ReadWrite.All` — create/update/delete monitors and snapshots
+  - `Application.ReadWrite.All` + `AppRoleAssignment.ReadWrite.All` — required **only** during setup (`Install-UTCMServicePrincipal`, `Grant-UTCMPermission`)
+  - `RoleManagement.ReadWrite.Directory` — required **only** during setup (`Grant-UTCMDirectoryRole`)
 
 ## �🚀 Quick Start
 
@@ -27,6 +27,34 @@ Install-Module -Name UTCM -Scope CurrentUser
 git clone https://github.com/JankeSkanke/UTCM.git
 Import-Module .\UTCM\UTCM.psd1
 ```
+
+### First-time tenant setup
+
+Before running any monitors you need to install the UTCM service principal and grant it permissions. These Graph operations require elevated scopes — pass them as an array to `Connect-UTCM`:
+
+```powershell
+# Connect with the extra scopes needed for setup (short names are auto-expanded)
+Connect-UTCM -TenantId "yourtenant.onmicrosoft.com" -Scopes @(
+    'ConfigurationMonitoring.ReadWrite.All',
+    'Application.ReadWrite.All',
+    'AppRoleAssignment.ReadWrite.All',
+    'RoleManagement.ReadWrite.Directory'
+)
+
+# 1. Install the UTCM service principal in the tenant
+Install-UTCMServicePrincipal
+
+# 2. Grant it the Graph permissions it needs to read your workloads
+Grant-UTCMPermission -PermissionName @(
+    'Policy.Read.All',
+    'DeviceManagementConfiguration.Read.All'
+)
+
+# 3. Optionally assign a directory role (e.g. Global Reader)
+Grant-UTCMDirectoryRole -RoleDisplayName 'Global Reader'
+```
+
+> **Note:** Being a Global Admin is not sufficient on its own — the OAuth token must carry the explicit scopes listed above. `Connect-UTCM` without `-Scopes` only requests `ConfigurationMonitoring.ReadWrite.All`, which is enough for day-to-day use but not for setup.
 
 ### Basic Usage
 
