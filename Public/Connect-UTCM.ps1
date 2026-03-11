@@ -25,20 +25,9 @@ function Connect-UTCM {
         Client secret for the app registration (application flow only).
 
     .PARAMETER Scopes
-        One or more Graph scopes to request. Accepts an array so you don't have to
-        manually join a space-delimited string.
-
-        Short names (e.g. "Application.ReadWrite.All") are automatically expanded to
-        their full URI (https://graph.microsoft.com/Application.ReadWrite.All).
-        OIDC scopes (openid, profile, offline_access, email) are passed through unchanged.
-
-        For interactive flow, defaults to the standard UTCM delegated scopes.
-        For client credentials, defaults to 'https://graph.microsoft.com/.default'.
-
-        Setup commands require additional scopes — include them here at connect time:
-          Install-UTCMServicePrincipal  → Application.ReadWrite.All
-          Grant-UTCMPermission          → Application.ReadWrite.All, AppRoleAssignment.ReadWrite.All
-          Grant-UTCMDirectoryRole       → RoleManagement.ReadWrite.Directory
+        Space-separated scopes to request. For interactive flow, defaults to the UTCM
+        delegated scopes so consent is properly prompted. For client credentials, defaults
+        to 'https://graph.microsoft.com/.default'.
 
     .PARAMETER AccessToken
         Provide an already-acquired access token directly (skips token acquisition).
@@ -54,15 +43,6 @@ function Connect-UTCM {
 
     .EXAMPLE
         Connect-UTCM -AccessToken $myToken
-
-    .EXAMPLE
-        # Connect with elevated scopes for first-time tenant setup (short names are auto-expanded)
-        Connect-UTCM -TenantId "contoso.onmicrosoft.com" -Scopes @(
-            'ConfigurationMonitoring.ReadWrite.All',
-            'Application.ReadWrite.All',
-            'AppRoleAssignment.ReadWrite.All',
-            'RoleManagement.ReadWrite.Directory'
-        )
     #>
     [CmdletBinding(DefaultParameterSetName = 'Interactive')]
     param(
@@ -79,7 +59,7 @@ function Connect-UTCM {
 
         [Parameter(ParameterSetName = 'Interactive')]
         [Parameter(ParameterSetName = 'ClientCredential')]
-        [string[]]$Scopes,
+        [string]$Scopes,
 
         [Parameter(Mandatory, ParameterSetName = 'Token')]
         [string]$AccessToken
@@ -100,27 +80,15 @@ function Connect-UTCM {
     # Fall back to the well-known Graph PowerShell app ID for interactive flow
     if (-not $ClientId) { $ClientId = $script:GraphPSAppId }
 
-    # Normalize scope entries: expand short names to full Graph URIs.
-    # OIDC primitives and anything already fully-qualified pass through unchanged.
-    $oidcScopes = @('openid', 'profile', 'offline_access', 'email')
-    $normalizeScopes = {
-        param([string[]]$raw)
-        $raw | ForEach-Object {
-            if ($_ -in $oidcScopes -or $_.StartsWith('https://')) { $_ }
-            else { "https://graph.microsoft.com/$_" }
-        }
-    }
-
     $tokenEndpoint = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
 
     if ($PSCmdlet.ParameterSetName -eq 'ClientCredential') {
         # --- Client Credentials ---
-        if (-not $Scopes) { $Scopes = @('https://graph.microsoft.com/.default') }
+        if (-not $Scopes) { $Scopes = 'https://graph.microsoft.com/.default' }
 
-        $scopeString = (& $normalizeScopes $Scopes) -join ' '
         $body = @{
             client_id     = $ClientId
-            scope         = $scopeString
+            scope         = $Scopes
             client_secret = $ClientSecret
             grant_type    = 'client_credentials'
         }
@@ -137,7 +105,6 @@ function Connect-UTCM {
     else {
         # --- Authorization Code + PKCE (browser-based interactive login) ---
         if (-not $Scopes) { $Scopes = $script:DefaultScopes }
-        $scopeString = (& $normalizeScopes $Scopes) -join ' '
 
         # 1. Generate PKCE code verifier & challenge
         $codeVerifierBytes = [byte[]]::new(32)
@@ -163,7 +130,7 @@ function Connect-UTCM {
                 "response_type=code"
                 "redirect_uri=$([uri]::EscapeDataString($redirectUri))"
                 "response_mode=query"
-                "scope=$([uri]::EscapeDataString($scopeString))"
+                "scope=$([uri]::EscapeDataString($Scopes))"
                 "state=$state"
                 "code_challenge=$codeChallenge"
                 "code_challenge_method=S256"
@@ -203,7 +170,7 @@ function Connect-UTCM {
         # 5. Exchange auth code + verifier for tokens
         $tokenBody = @{
             client_id     = $ClientId
-            scope         = $scopeString
+            scope         = $Scopes
             code          = $authCode
             redirect_uri  = $redirectUri
             grant_type    = 'authorization_code'
